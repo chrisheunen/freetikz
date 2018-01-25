@@ -1,0 +1,151 @@
+html, body, #wrapper {
+    padding: 0px;
+    margin: 0px;
+    height: 100%;
+}
+
+#wrapper {
+  width: 99%;
+  text-align: center;
+}
+
+#svg-wrap {
+	float: left; 
+	width: 60%;
+  height: 99%;
+}
+
+#svg {
+    border: 1px solid;
+    margin: 2px;
+    cursor: crosshair;
+    width: 99%;
+    height: 99%;
+}
+
+#latex-wrap {
+	float: right;
+	width: 40%;
+  height: 99%;
+}
+
+#latex {
+  border: 1px solid;
+  margin: 2px;
+	width: 99%;
+	height: 99%;
+	font-family: monospace;
+}
+
+#toolbar {
+  position:absolute;
+  height: 2em;
+  margin: 10px;
+  margin-bottom: 5px;
+}
+
+.button {
+  display:inline;  
+  position: absolute;
+  border-radius: 3px;
+  border: 1px solid rgba(0, 0, 0, 0.2);
+  padding: .375em 1em .375em 1em;
+  font-size: 1.2em;
+  opacity: 0.5;
+  transition: all 0.1s ease-in-out;
+}
+
+#undo {
+  margin-left: 1em;
+}
+
+#righttoolbar {
+  position: fixed;
+  right: 0px;
+  top: 0px;
+  height: 2em;
+  margin: 10px;
+  margin-bottom: 5px;
+}
+
+#settings {
+  float: right;
+  margin-right: 1em;
+}
+
+.dropdown {
+    position: relative;
+    display: inline-block;
+}
+
+.dropdown-content {
+  display: none;
+  position: absolute;
+  right: 0;
+  background-color: whitesmoke;
+  min-width: 15em;
+  border: 1px solid rgba(0, 0, 0, 0.2);
+  z-index: 1;
+}
+
+.dropdown-content a {
+  color: black;
+  padding: .5em 1em;
+  text-decoration: none;
+  display: block;
+}
+
+.dropdown-content a:hover {
+  background-color: lightgray; 
+}
+
+.dropdown:hover .dropdown-content {
+    display: block;
+}
+
+.dropdown:hover {
+    background-color: #3e8e41;
+}
+
+.button:hover {
+  background: lightgray;
+  opacity: 1.0;
+}
+
+.switch input {
+  position: absolute !important;
+  clip: rect(0, 0, 0, 0);
+}
+
+.switch label {
+  display: inline;
+  float: left;
+  background-color: white;
+  opacity: 0.5;
+  font-size: 1.5em;
+  padding: .2em 1em .2em 1em;
+  text-align: center;
+  border: 1px solid rgba(0, 0, 0, 0.2);
+  transition: all 0.1s ease-in-out;
+}
+
+.switch label:hover {
+  cursor: pointer;
+  background: lightgray;
+  opacity: 1.0;
+}
+
+.switch input:checked + label {
+  background-color: whitesmoke;
+  opacity: 1.0;
+}
+
+.switch label:first-of-type {
+  border-bottom-left-radius: 3px;
+  border-top-left-radius: 3px;
+}
+
+.switch label:last-of-type {
+  border-bottom-right-radius: 3px;
+  border-top-right-radius: 3px;
+}
