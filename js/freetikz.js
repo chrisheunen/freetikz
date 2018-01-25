@@ -29,7 +29,17 @@ function setup() {
   svg = document.getElementById("svg");
   rect = svg.getBoundingClientRect();
 
-  svg.addEventListener("mousedown", function (e) {
+  svg.addEventListener("touchstart", function(e) { pointerDown(e); e.stopPropagation; e.preventDefault(); });
+  svg.addEventListener("mousedown", pointerDown);
+
+  svg.addEventListener("touchmove", function(e) { pointerMove(e); e.stopPropagation; e.preventDefault(); });
+  svg.addEventListener("mousemove", pointerMove);
+
+  svg.addEventListener("touchend", function(e) { pointerUp(e); e.stopPropagation; e.preventDefault(); });
+  svg.addEventListener("mouseup", pointerUp);
+}
+
+var pointerDown = function(e) { 
     if (pencil) {
       svgpath = document.createElementNS('http://www.w3.org/2000/svg', 'path');
       svgpath.setAttribute("fill", "none");
@@ -44,9 +54,9 @@ function setup() {
     } else if (eraser) {
       erase(getMousePosition(e));
     }
-  });
+};
 
-  svg.addEventListener("mousemove", function (e) {
+var pointerMove = function (e) {
     if (pencil) {
       if (svgpath) {
           appendToBuffer(getMousePosition(e));
@@ -55,13 +65,12 @@ function setup() {
     } else if (eraser) {
       erase(getMousePosition(e));
     }
-  });
+};
 
-  svg.addEventListener("mouseup", function () {
-      if (svgpath) svgpath = null;
-      updateLatex();
-  });
-}
+var pointerUp = function () {
+  if (svgpath) svgpath = null;
+  updateLatex();
+};
 
 var getMousePosition = function (e) {
     return {
