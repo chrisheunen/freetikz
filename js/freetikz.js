@@ -538,7 +538,14 @@ function simplifyWire (wire) {
 }
 
 /**
- * TODO: Annotate this
+ * Decide how a wire anchors to a morphism
+ * E.g. if the morphism has two incoming wires from the bottom, they should be anchored to south west and south east.
+ * @param {Node} node
+ * @param {Number} angle
+ * @param {Point} point
+ * @param {[String, Point]} morphisms
+ * @param {[[Point]]} wires
+ * @returns {String}
  */
 function anchor (node, angle, point, morphisms, wires) {
   if (node[0] === 'm') {
