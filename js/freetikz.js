@@ -14,14 +14,17 @@ var grid = 0.5; // how large the grid is that coordinates are snapped to
 
 /* SMOOTH SVG DRAWING */
 
-var svg = null;
-var rect = null;
-var svgpath = null;
-var strPath = null;
-var buffer = [];
-var latex = null;
-var d3svg = null;
+var svg = null; // <svg> elemement
+var rect = null; // Bounding rectangle for the svg
+var svgpath = null; // svg path element, used when user draws
+var strPath = null; // svg path in "M 10, 20" etc. form
+var buffer = []; // holds points for smoothing
+var latex = null; // <textarea> element for output
+var d3svg = null; // d3 reference for the svg object
 
+/**
+ * Initialises the svg and d3 handlers
+ */
 function setup() {
   latex = document.getElementById("latex");
 
@@ -39,6 +42,9 @@ function setup() {
   svg.addEventListener("mouseup", pointerUp);
 }
 
+/**
+ * Handles touchstart and mousedown events
+ */
 var pointerDown = function (e) {
   if (pencil) {
     svgpath = document.createElementNS('http://www.w3.org/2000/svg', 'path');
@@ -56,6 +62,9 @@ var pointerDown = function (e) {
   }
 };
 
+/**
+ * Handles touchmove and mousemove events
+ */
 var pointerMove = function (e) {
   if (pencil) {
     if (svgpath) {
@@ -67,11 +76,18 @@ var pointerMove = function (e) {
   }
 };
 
+/**
+ * Handles touchend and mouseup events
+ */
 var pointerUp = function () {
   if (svgpath) svgpath = null;
   updateLatex();
 };
 
+/**
+ * Converts screen-origin mouse event to svg-origin mouse event.
+ * @returns {Point}
+ */
 var getMousePosition = function (e) {
   return {
     x: e.pageX - rect.left,
@@ -79,6 +95,10 @@ var getMousePosition = function (e) {
   }
 };
 
+/**
+ * Add point to the line-drawing buffer
+ * @param {Point} pt
+ */
 var appendToBuffer = function (pt) {
   buffer.push(pt);
   while (buffer.length > smoothingFactor) {
@@ -86,8 +106,13 @@ var appendToBuffer = function (pt) {
   }
 };
 
+/**
+ * Collect the mean x and y coordinates of the buffer
+ * @param {Number} offset Ignore the first `offset` many points in the buffer
+ */
 var getAveragePoint = function (offset) {
   var len = buffer.length;
+  //TODO: Understand what happens when this is false
   if (len % 2 === 1 || len >= smoothingFactor) {
     var totalX = 0;
     var totalY = 0;
@@ -107,6 +132,9 @@ var getAveragePoint = function (offset) {
   return null;
 };
 
+/**
+ * Extend the svg path by adding smooth points from the buffer
+ */
 var updateSvgPath = function () {
   var pt = getAveragePoint(0);
   if (pt) {
@@ -122,6 +150,10 @@ var updateSvgPath = function () {
 
 /* CALCULATE PROPERTIES OF POLYGON FOR CLASSIFICATION */
 
+/**
+ * Pull the points from svgPath
+ * @returns {List[[Number, Number]]}
+ */
 function svgPathToList(svgPath) {
   var src = svgPath.split(/(?=[LM])/);
   var path = [];
@@ -134,12 +166,22 @@ function svgPathToList(svgPath) {
   return path;
 }
 
+/**
+ * Euclidean distance
+ * @param {[Number, Number]} a
+ * @param {[Number, Number]} b
+ */
 function distance(a, b) {
   var x = b[0] - a[0];
   var y = b[1] - a[1];
   return Math.sqrt(x * x + y * y);
 }
 
+/**
+ * Find bounding box for the given path
+ * @param {List[[Number, Number]]} path
+ * @returns {[[Number, Number], [Number, Number]]}
+ */
 function BoundingBox(path) {
   var minX, maxX, minY, maxY;
   for (var i = 0; i < path.length; i++) {
@@ -151,10 +193,22 @@ function BoundingBox(path) {
   return [[minX, minY], [maxX, maxY]];
 }
 
+/**
+ * Heuristic for path compactness
+ * @param {Number} area
+ * @param {Number} perimeter
+ * @returns {Number}
+ */
 function Compactness(area, perimeter) {
   return 2 * Math.sqrt(area * Math.PI) / perimeter;
 }
 
+/**
+ * Heuristic for path eccentricity
+ * @param {List[[Number, Number]]} path
+ * @param {[Number, Number]} centre
+ * @returns {Number}
+ */
 function Eccentricity(path, centre) {
   var centredpath = [];
   for (var i = 0; i < path.length; i++) centredpath.push([path[i][0] - centre[0], path[i][1] - centre[1]]);
@@ -171,16 +225,32 @@ function Eccentricity(path, centre) {
   return lambda2 / lambda1;
 }
 
+/**
+ * Heuristic for angularity (spikiness)
+ * @param {[Number, Number]} boundingbox
+ * @param {Number} area
+ * @returns {Number}
+ */
 function angularity(boundingbox, area) {
   var boundarea = (boundingbox[1][0] - boundingbox[0][0]) * (boundingbox[1][1] - boundingbox[0][1]);
   return area / boundarea;
 }
 
+/**
+ * Duplicate of angularity
+ */
 function Rectangularity(boundingbox, area) {
   var boundarea = (boundingbox[1][0] - boundingbox[0][0]) * (boundingbox[1][1] - boundingbox[0][1]);
   return area / boundarea;
 }
 
+/**
+ * Heuristic for circularity
+ * @param {List[Number, Number]} path
+ * @param {[Number, Number]} centre
+ * @param {Number} area
+ * @returns {Number}
+ */
 function Circularity(path, centre, area) {
   var furthestdistance = 0;
   for (var i = 0; i < path.length; i++) {
@@ -191,20 +261,45 @@ function Circularity(path, centre, area) {
   return area / circlearea;
 }
 
+/** 
+ * Aspect ration
+ * @param {Boundingbox} boundingbox
+ * @returns {Number}
+ */
 function AspectRatio(boundingbox) {
   return (boundingbox[1][0] - boundingbox[0][0]) / (boundingbox[1][1] - boundingbox[0][1]);
 }
 
+/**
+ * Heuristic for convexity
+ * @param {List[Number, Number]} path
+ * @param {Number} area
+ * @param {Number} threshold
+ * @returns {Number}
+ */
 function isConvex(path, area, threshold) {
   var convexhullArea = d3.polygonArea(d3.polygonHull(path));
   return ((area / convexhullArea) >= threshold)
 }
 
+/**
+ * Heuristic for whether the path is considered open
+ * @param {List[Number, Number]} path
+ * @param {Number} perimeter
+ * @param {Number} threshold
+ * @returns {Boolean}
+ */
 function isOpen(path, perimeter, threshold) {
   var ratio = distance(path[0], path[path.length - 1]) / perimeter;
   return (ratio > threshold);
 }
 
+/**
+ * Find orientation using the furthest point from the centre of the path
+ * @param {List[Number, Number]} path
+ * @param {[Number, Number]} centre
+ * @returns {String}
+ */
 function Orientation(path, centre) {
   var corner = path[0];
   var furthestdistance = distance(corner, centre);
@@ -222,6 +317,9 @@ function Orientation(path, centre) {
 
 /* CLASSIFY SHAPES */
 
+/**
+ * For each path create the corresponding tikz entry, and output it to the screen
+ */
 function updateLatex() {
   var pathlist = [];
   d3svg.selectAll("path").each(function (d, i) {
@@ -265,6 +363,13 @@ function updateLatex() {
 
 /* GENERATE LATEX CODE */
 
+/**
+ * Try to find any existing structure for the point to connect to
+ * @param {[Number, Number]} point The point we are investigating
+ * @param {List[[Polygon, [Number, Number]]]} dots
+ * @param {List[[Polygon, [Number, Number]]]} morphisms
+ * @returns {String}
+ */
 function bestConnection(point, dots, morphisms) {
   var bestDistance = connectThreshold;
   var bestConnection = "";
@@ -288,6 +393,13 @@ function bestConnection(point, dots, morphisms) {
   else return latexCoords(point);
 }
 
+/**
+ * Connect the wires to the given dots and morphisms
+ * @param {List[[Number, Number]]} wires
+ * @param {List[[Polygon, [Number, Number]]]} dots
+ * @param {List[[Polygon, [Number, Number]]]} morphisms
+ * @returns {List[[Wire, [Number, Number], [Number, Number]]}
+ */
 function connect(wires, dots, morphisms) {
   annotatedwires = [];
   for (var i = 0; i < wires.length; i++) {
@@ -299,6 +411,10 @@ function connect(wires, dots, morphisms) {
   return annotatedwires;
 }
 
+/**
+ * Rounds the number to the nearest multiple of _mult
+ * @param {Number} _mult
+ */
 Number.prototype.mround = function (_mult) {
   var base = Math.abs(this);
   var mult = Math.abs(_mult);
@@ -311,6 +427,10 @@ Number.prototype.mround = function (_mult) {
   return (this < 0) ? -base : base;
 }
 
+/**
+ * Convert a point into its latex coordinates
+ * @param {[Number, Number]} point
+ */
 function latexCoords(point) {
   var x = point[0];
   var y = point[1];
@@ -318,6 +438,11 @@ function latexCoords(point) {
     + ", " + parseFloat(10 - y * 10 / svg.getBoundingClientRect().height).mround(grid).toFixed(1) * 1
 }
 
+/**
+ * Rounds the angle to a multiple of the angleSnapThreshold
+ * @param {Number} angle
+ * @returns {Number}
+ */
 function snapAngle(angle) {
   var snapangle = parseFloat(angle).mround(angleSnapThreshold);
   if (snapangle == -180) snapangle = 180;
@@ -325,12 +450,23 @@ function snapAngle(angle) {
   return snapangle;
 }
 
+/**
+ * Is the angle within a tolerance of directly horizontal or vertical
+ * @param {Number} angle
+ * @returns {Boolean}
+ */
 function isHorizontalOrVertical(angle) {
   var snapangle = Math.abs(angle) % 90;
   var snap = (snapangle < angleThreshold) || (snapangle > 90 - angleThreshold);
   return snap;
 }
 
+/**
+ * Angle of the second argument from the first
+ * @param {[Number, Number]} begin
+ * @param {[Number, Number]} end
+ * @returns {Number}
+ */
 function Angle(begin, end) {
   var dx = end[0] - begin[0];
   var dy = end[1] - begin[1];
@@ -338,6 +474,11 @@ function Angle(begin, end) {
   return angle * 180.0 / Math.PI;
 }
 
+/**
+ * Render the dot to svg
+ * @param {[Number, Number]} point
+ * @param {String} color
+ */
 function showDot(point, color) {
   var svgns = "http://www.w3.org/2000/svg";
   var dot = document.createElementNS(svgns, 'circle');
@@ -348,6 +489,11 @@ function showDot(point, color) {
   svg.appendChild(dot);
 }
 
+/**
+ * Simplifies the wire, via our own method
+ * @param {Wire} wire
+ * @returns {Wire}
+ */
 function simplifyWire(wire) {
   // for (var i=0; i<wire.length; i++) showDot(wire[i],'blue');
   // var s = simplify(wire, 30, true);
@@ -390,6 +536,9 @@ function simplifyWire(wire) {
   return sparsewire;
 }
 
+/**
+ * TODO: Annotate this
+ */
 function anchor(node, angle, point, morphisms, wires) {
   if (node[0] == 'm') {
     var morphismnr = node.substr(1, node.length - 1);
@@ -444,6 +593,15 @@ function anchor(node, angle, point, morphisms, wires) {
   return node;
 }
 
+/**
+ * Render a wire as tikz
+ * @param {Wire} wire
+ * @param {Node} begin
+ * @param {Node} end
+ * @param {List[Morphism]} morphisms
+ * @param {List[Wire]} wires
+ * @returns {String}
+ */
 function latexWire(wire, begin, end, morphisms, wires) {
   var simplewire = simplifyWire(wire);
   var latex = "  \\draw ("
@@ -460,6 +618,9 @@ function latexWire(wire, begin, end, morphisms, wires) {
   return latex;
 }
 
+/**
+ * Creates the tikz output, used inside updateLatex
+ */
 function generateLatex(dots, morphisms, annotatedwires) {
   var latex = "\\documentclass{standalone}\n\\usepackage{freetikz}\n\\begin{document}\n\\begin{tikzpicture}\n";
   for (var i = 0; i < dots.length; i++) {
@@ -486,11 +647,17 @@ function generateLatex(dots, morphisms, annotatedwires) {
 var pencil = true;
 var eraser = false;
 
+/**
+ * Setup for the toolbar element
+ */
 function toolbar() {
   pencil = document.getElementById("switch_pencil").checked;
   eraser = document.getElementById("switch_eraser").checked;
 }
 
+/**
+ * Event handler for the erase
+ */
 function erase(pt) {
   var path = document.elementFromPoint(pt.x, pt.y);
   if (path.tagName == "path") {
@@ -499,8 +666,12 @@ function erase(pt) {
   }
 }
 
+// Register undo event with d3
 d3.select("body").on("keydown", function () { if (d3.event.keyCode == 90) undo(); });
 
+/**
+ * Handler for the undo action
+ */
 function undo() {
   d3.select('#svg>path:last-child').remove();
   updateLatex();
